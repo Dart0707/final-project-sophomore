@@ -1,0 +1,173 @@
+:root {
+    --brand-blue: #2d2fa3;
+    --brand-hover: #1e2080;
+    /*--soft-blue: #4044D1;*/  
+    --bg-dark: #f0f2fb;
+    --form-bg: #ffffff;
+    --text-main: #1a1a2e;
+    --border-color: #dde1f0;
+}
+
+body, html {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    background: radial-gradient(circle at center, #ffffff 0%, var(--bg-dark) 100%);
+    /*background-color: var(--bg-dark);*/ 
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-family: 'DM Sans', Tahoma, Geneva, Verdana, sans-serif; /* used to be Segoe UI */
+    color: var(--text-main);
+}
+
+/* The centered white box - Made Larger */
+.login-wrapper {
+    width: 95%;           
+    max-width: 1100px;    
+    height: 80vh;         
+    min-height: 620px;
+    background: var(--form-bg);
+    display: flex;
+    box-shadow: 0 10px 40px rgba(45,47,163,0.08);
+    border-radius: 16px;
+    overflow: hidden;
+}
+
+/* Left Side: Scaled up for the bigger box */
+.left-panel {
+    flex: 1.2;            
+    background-color: var(--brand-blue);
+    background-image: linear-gradient(135deg, #2d2fa3 0%, #13147a 100%);
+    color: white;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 0 80px;
+    position: relative;
+}
+
+/* Tech lines pattern */
+.left-panel::before {
+    content: "";
+    position: absolute;
+    top: 0; left: 0; width: 100%; height: 100%;
+    opacity: 0.08;
+    background-image: radial-gradient(#fff 1px, transparent 1px);
+    background-size: 30px 30px;
+}
+
+.left-panel h1 {
+    font-family: 'DM Serif Display', serif;
+    font-size: 4.5rem;    /* Larger text for the bigger container */
+    font-weight: 400;
+    line-height: 1.05;
+    margin-bottom: 25px;
+    z-index: 1;
+}
+
+.left-panel p {
+    font-size: 1.15rem;    /* Scaled up */
+    line-height: 1.6;
+    max-width: 480px;
+    opacity: 0.9;
+    z-index: 1;
+}
+
+/* Right Side: Form Area */
+.right-panel {
+    flex: 1;
+    background-color: var(--form-bg);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 30px 100px;
+}
+
+/* Brand and Text scaled up */
+.brand-name {
+    font-family: 'DM Serif Display', serif;
+    font-size: 2rem; 
+    font-weight: 400; 
+    margin-bottom: 10px; 
+    color: var(--brand-blue);
+}
+
+.welcome-text { 
+    font-size: 1.6rem; 
+    font-weight: 700; 
+    margin-bottom: 15px; 
+}
+
+/* Inputs and Button scaled up for the larger box */
+.input-group { margin-bottom: 16px; }
+
+input[type="text"], 
+input[type="password"] {
+    width: 100%;
+    padding: 15px 20px;
+    border: 1.5px solid var(--border-color);
+    border-radius: 12px;
+    font-size: 1.05rem;
+    font-family: 'DM Sans', sans-serif;
+    box-sizing: border-box;
+    transition: all 0.3s ease;
+}
+
+input[type="text"]:focus, 
+input[type="password"]:focus {
+    outline: none;
+    border-color: var(--brand-blue);
+    box-shadow: 0 0 0 3px rgba(45, 47, 163, 0.1);
+}
+
+
+
+.login-btn {
+    width: 100%;
+    padding: 16px;
+    background-color: var(--brand-blue);
+    color: white;
+    border: none;
+    border-radius: 12px;
+    font-size: 1.05rem;
+    font-weight: 600;
+    font-family: 'DM Sans', sans-serif;
+    cursor: pointer;
+    margin-top: 10px;
+    margin-bottom: 15px;
+    transition: background-color 0.2s ease, transform 0.1s ease;
+}
+
+.login-btn:hover{
+    background-color: var(--brand-hover);
+}
+
+.login-btn:active{
+    transform: scale(0.98);
+}
+
+.captcha-box {
+    background: white;
+    border: 1.5px solid var(--border-color);
+    border-radius: 12px;
+    padding: 10px;
+    display: flex;
+    justify-content: center;
+}
+
+.toast.err {
+    background: #fee2e2;
+    border-left: 4px solid #dc2626;
+    padding: 0.6rem 1rem;
+    border-radius: 8px;
+    margin-bottom: 15px;
+    font-size: 0.9rem;
+    color: #dc2626;
+    animation: slideIn 0.3s ease;
+}
+
+@keyframes slideIn {
+    from { opacity: 0; transform: translateY(-6px); }
+    to { opacity: 1; transform: translateY(0); }
+}

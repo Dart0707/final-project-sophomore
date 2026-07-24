@@ -1,0 +1,270 @@
+package myservlets;
+
+import com.itextpdf.text.BaseColor;
+import com.itextpdf.text.Document;
+import com.itextpdf.text.DocumentException;
+import com.itextpdf.text.Element;
+import com.itextpdf.text.Font;
+import com.itextpdf.text.FontFactory;
+import com.itextpdf.text.Paragraph;
+import com.itextpdf.text.PageSize;
+import com.itextpdf.text.Phrase;
+import com.itextpdf.text.pdf.ColumnText;
+import com.itextpdf.text.pdf.PdfContentByte;
+import com.itextpdf.text.pdf.PdfPCell;
+import com.itextpdf.text.pdf.PdfPTable;
+import com.itextpdf.text.pdf.PdfPageEventHelper;
+import com.itextpdf.text.pdf.PdfTemplate;
+import com.itextpdf.text.pdf.BaseFont;
+import com.itextpdf.text.pdf.PdfWriter;
+import myhelper.User;
+import myhelper.UserDAO;
+
+import javax.servlet.ServletConfig;
+import javax.servlet.ServletContext;
+import javax.servlet.ServletException;
+import javax.servlet.annotation.WebServlet;
+import javax.servlet.http.HttpServlet;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import javax.servlet.http.HttpSession;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.sql.SQLException;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.List;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+import utils.LoggerUtil;
+
+@WebServlet("/downloadUsers")
+public class DownloadUsersServlet extends HttpServlet {
+
+    private UserDAO userDAO;
+    private String cipherAlgorithm;
+    private String secretKey;
+    private String URL;
+    private String dbUser;
+    private String dbPass;
+    private String dbDriver;
+    private String mySQL_URL;
+    private String mySQL_pass;
+    private String mySQL_user;
+    private String postgre_URL;
+    private String postgre_pass;
+    private String postgre_user;
+    private static final Logger logger = utils.SystemLogger.setupLogger(DownloadUsersServlet.class.getName(), "");
+    private Integer userid;
+
+    @Override
+    public void init(ServletConfig config) throws ServletException {
+        super.init(config);
+        ServletContext ctx = config.getServletContext();
+        cipherAlgorithm = ctx.getInitParameter("cipherAlgorithm");
+        secretKey = ctx.getInitParameter("secretKey");
+        URL = config.getInitParameter("URL");
+        if (URL == null) URL = ctx.getInitParameter("URL");
+        dbUser = config.getInitParameter("dbUser");
+        if (dbUser == null) dbUser = ctx.getInitParameter("dbUser");
+        dbPass = config.getInitParameter("dbPass");
+        if (dbPass == null) dbPass = ctx.getInitParameter("dbPass");
+        dbDriver = config.getInitParameter("dbDriver");
+        if (dbDriver == null) dbDriver = ctx.getInitParameter("dbDriver");
+        mySQL_URL = getServletContext().getInitParameter("mySQLURL");
+        mySQL_pass = getServletContext().getInitParameter("mySQLPass");
+        mySQL_user = getServletContext().getInitParameter("mySQLUser");
+        postgre_URL = ctx.getInitParameter("postgreURL");
+        postgre_pass = ctx.getInitParameter("postgrePass");
+        postgre_user = ctx.getInitParameter("postgreUser");
+        userDAO = new UserDAO(cipherAlgorithm, secretKey,URL,dbUser,dbPass,dbDriver,mySQL_URL,mySQL_user,mySQL_pass,postgre_URL,postgre_user,postgre_pass);
+    }
+
+    @Override
+    protected void doGet(HttpServletRequest req, HttpServletResponse resp)
+            throws ServletException, IOException {
+
+        HttpSession session = req.getSession(false);
+        if (session == null
+                || session.getAttribute("username") == null
+                || session.getAttribute("role") == null) {
+            resp.sendRedirect(req.getContextPath() + "/index.jsp");
+            return;
+        }
+
+        String role = (String) session.getAttribute("role");
+        if (!"Admin".equals(role)) {
+            session.setAttribute("flashMsg", "Unauthorized.");
+            resp.sendRedirect(req.getContextPath() + "/success");
+            return;
+        }
+        userid = (Integer) session.getAttribute("userId");
+        try {
+            List<User> users = userDAO.getAllUsers();
+            writePdf(resp, users, (String) session.getAttribute("username"));
+        } catch (SQLException e) {
+            throw new ServletException("Unable to load users.", e);
+        }
+        logger.info("Event: Download users ——— Description: Admin"+userid+" Downloaded users.'");
+        LoggerUtil.log("INFO","Download Users",userid,"DownloadUserServlet.java","Admin"+userid+" Downloaded users.'",postgre_URL,postgre_user,postgre_pass);
+    }
+
+    private void writePdf(HttpServletResponse resp, List<User> users, String username)
+            throws ServletException, IOException {
+        ServletContext context = getServletContext();
+        String headerText = getContextParam(context, "pdf.header.text", "Users List");
+        String footerText = getContextParam(context, "pdf.footer.text", "Generated by the system");
+        Date now = new Date();
+        String fileName = "USERS_" + new SimpleDateFormat("yyyyMMddHHmmss").format(now) + ".pdf";
+
+        resp.setContentType("application/pdf");
+        resp.setHeader("Content-Disposition", "attachment; filename=\"" + fileName + "\"");
+
+        Document document = new Document(PageSize.A4.rotate(), 36, 36, 54, 54);
+        try (OutputStream output = resp.getOutputStream()) {
+            String generatedAt = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(now);
+            String displayUsername = (username == null || username.isEmpty()) ? "Unknown" : username;
+            PdfWriter writer = PdfWriter.getInstance(document, output);
+            writer.setPageEvent(new ReportPageEvent(headerText, footerText, "Users List", displayUsername, generatedAt));
+            document.open();
+
+            Font titleFont = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 16, BaseColor.BLACK);
+            Font headerFont = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 11, BaseColor.WHITE);
+            Font bodyFont = FontFactory.getFont(FontFactory.HELVETICA, 10, BaseColor.BLACK);
+
+            PdfPTable table = new PdfPTable(2);
+            table.setWidthPercentage(100);
+            table.setWidths(new float[] { 3f, 2f });
+
+            addHeaderCell(table, "Username", headerFont);
+            addHeaderCell(table, "Role", headerFont);
+
+            if (users.isEmpty()) {
+                PdfPCell emptyCell = new PdfPCell(new Phrase("No users found.", bodyFont));
+                emptyCell.setColspan(2);
+                emptyCell.setHorizontalAlignment(Element.ALIGN_CENTER);
+                emptyCell.setPadding(10f);
+                table.addCell(emptyCell);
+            } else {
+                for (User u : users) {
+                    String uname = u.getUsername();
+                    boolean isDownloadingAdmin = uname != null && uname.equals(displayUsername) && "Admin".equals(u.getRole());
+                    String unameDisplay = isDownloadingAdmin ? uname + " *" : uname;
+                    table.addCell(new Phrase(unameDisplay, bodyFont));
+                    table.addCell(new Phrase(u.getRole(), bodyFont));
+                }
+            }
+
+            document.add(table);
+            document.close();
+        } catch (Exception e) {
+            logger.severe("Event: Download users ——— Description: Unable to generate PDF.");
+            LoggerUtil.log("SEVERE","Download Users",userid,"DownloadUserServlet.java","Unable to generate PDF.",postgre_URL,postgre_user,postgre_pass);
+            throw new ServletException("Unable to generate PDF.", e);
+        }
+    }
+
+    private String getContextParam(ServletContext context, String name, String defaultValue) {
+        String value = context.getInitParameter(name);
+        return value == null || value.trim().isEmpty() ? defaultValue : value.trim();
+    }
+
+    private void addHeaderCell(PdfPTable table, String label, Font headerFont) {
+        PdfPCell header = new PdfPCell(new Phrase(label, headerFont));
+        header.setBackgroundColor(new BaseColor(45, 47, 163));
+        header.setPadding(8f);
+        table.addCell(header);
+    }
+
+    private static class ReportPageEvent extends PdfPageEventHelper {
+
+        private final String headerText;
+        private final String footerText;
+        private final String titleText;
+        private final String generatedByText;
+        private final String generatedAtText;
+        private PdfTemplate totalPagesTemplate;
+        private BaseFont footerBaseFont;
+        private Font headerFont;
+        private Font footerFont;
+
+        private ReportPageEvent(String headerText, String footerText, String titleText, String generatedByText, String generatedAtText) {
+            this.headerText = headerText;
+            this.footerText = footerText;
+            this.titleText = titleText;
+            this.generatedByText = generatedByText;
+            this.generatedAtText = generatedAtText;
+        }
+
+        @Override
+        public void onOpenDocument(PdfWriter writer, Document document) {
+            totalPagesTemplate = writer.getDirectContent().createTemplate(50, 16);
+            headerFont = FontFactory.getFont(FontFactory.HELVETICA, 9, Font.BOLD, BaseColor.BLACK);
+            footerFont = FontFactory.getFont(FontFactory.HELVETICA, 8, Font.NORMAL, BaseColor.DARK_GRAY);
+            footerBaseFont = footerFont.getCalculatedBaseFont(false);
+        }
+
+        @Override
+        public void onEndPage(PdfWriter writer, Document document) {
+            PdfContentByte canvas = writer.getDirectContent();
+            float left = document.left();
+            float right = document.right();
+            float headerY = document.top() + 28;
+            float footerY = document.bottom() - 24;
+
+                float centerX = (left + right) / 2f;
+
+                ColumnText.showTextAligned(canvas, Element.ALIGN_LEFT,
+                    new Phrase(headerText, headerFont), left, headerY + 12, 0);
+
+                ColumnText.showTextAligned(canvas, Element.ALIGN_CENTER,
+                    new Phrase(titleText, headerFont), centerX, headerY, 0);
+
+                String meta = "Generated by: " + generatedByText + "    Generated at: " + generatedAtText;
+                ColumnText.showTextAligned(canvas, Element.ALIGN_CENTER,
+                    new Phrase(meta, footerFont), centerX, headerY - 12, 0);
+
+                ColumnText.showTextAligned(canvas, Element.ALIGN_RIGHT,
+                    new Phrase(footerText, footerFont), right, footerY, 0);
+
+            int pageNumber = writer.getPageNumber();
+            String pageText = "Page " + pageNumber + " of ";
+            centerX = (left + right) / 2f;
+
+            ColumnText.showTextAligned(canvas, Element.ALIGN_CENTER,
+                new Phrase(pageText, footerFont), centerX, footerY, 0);
+
+            if (footerBaseFont != null) {
+            float textWidth = footerBaseFont.getWidthPoint(pageText, footerFont.getSize());
+            float templateX = centerX + textWidth / 2f;
+            canvas.addTemplate(totalPagesTemplate, templateX + 1, footerY);
+            } else {
+            // fallback: place template a bit to the right of center
+            canvas.addTemplate(totalPagesTemplate, centerX + 18, footerY - 3);
+            }
+        }
+
+        @Override
+        public void onCloseDocument(PdfWriter writer, Document document) {
+            int totalPages = writer.getPageNumber();
+            if (footerBaseFont != null) {
+                totalPagesTemplate.beginText();
+                totalPagesTemplate.setFontAndSize(footerBaseFont, footerFont.getSize());
+                totalPagesTemplate.setColorFill(footerFont.getColor());
+                totalPagesTemplate.showText(String.valueOf(totalPages));
+                totalPagesTemplate.endText();
+            } else {
+                totalPagesTemplate.beginText();
+                try {
+                    totalPagesTemplate.setFontAndSize(BaseFont.createFont(), footerFont.getSize());
+                } catch (DocumentException ex) {
+                    Logger.getLogger(DownloadUsersServlet.class.getName()).log(Level.SEVERE, null, ex);
+                } catch (IOException ex) {
+                    Logger.getLogger(DownloadUsersServlet.class.getName()).log(Level.SEVERE, null, ex);
+                }
+                totalPagesTemplate.showText(String.valueOf(totalPages));
+                totalPagesTemplate.endText();
+            }
+        }
+    }
+}

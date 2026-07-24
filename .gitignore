@@ -1,0 +1,70 @@
+# Compiled class file
+*.class
+
+# Log files and JVM crash reports
+*.log
+*.log.*
+hs_err_pid*
+replay_pid*
+
+# Build outputs (Ant/NetBeans)
+/build/
+/dist/
+/nbbuild/
+/nbdist/
+/build/generated-sources/
+/build/empty/
+
+# Generated web artifacts
+/web/WEB-INF/classes/
+/web/WEB-INF/lib/
+
+# IDE and editor files
+/nbproject/private/
+.vscode/
+.idea/
+*.iml
+*.iws
+.settings/
+*.classpath
+*.project
+out/
+
+# Dependency/build tool folders (if present)
+target/
+.mvn/
+.gradle/
+node_modules/
+
+# Local machine and temp files
+.DS_Store
+Thumbs.db
+*~
+*.swp
+*.tmp
+*.temp
+*.bak
+*.local
+
+# Environment and local secrets
+.env
+.env.*
+local.properties
+secrets.properties
+/web/WEB-INF/web.xml
+
+
+# Reports and caches
+coverage/
+.report/
+.cache/
+
+# Archives/packages often generated locally
+*.zip
+*.tar.gz
+
+# Project-local architecture tracking and agent metadata
+/AGENTS.md
+/CLAUDE.md
+/arkive/
+.cursor/
